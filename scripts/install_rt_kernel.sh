@@ -44,6 +44,19 @@ else
     export linux_tree=/opt/linux-cip-${linux_version}${ipipe_cip_str};
 fi
 
+# Setting up user permissions
+echo  "-----> Setting up user/group."
+if grep -q xenomai /etc/group; then
+    echo "xenomai group already exists"
+else
+    groupadd xenomai
+fi
+usermod -a -G xenomai "$SUDO_USER"
+export xenomai_gid=`cat /etc/group | grep xenomai | sed -r 's/^xenomai:[a-z]+:([0-9]+):[a-z]*$/\1/'`
+
+echo  "-----> Group setup complete."
+
+
 rm -rf $build_root
 mkdir $build_root
 echo  "-----> Environment configuration complete."
@@ -111,6 +124,7 @@ update-initramfs -ck all
 sed -i '7,8 s/^/#/' /etc/default/grub
 sed -i -e 's/quiet//g' /etc/default/grub
 sed -i -e 's/splash//g' /etc/default/grub
+sed -i -e 's/(^GRUB_CMD_LINUX_DEFAULT="*)("$)/\1 xenomai\.allowed_group=${xenomai_gid} \2/'
 update-grub
 echo  "-----> Boot loader update complete."
 
@@ -124,16 +138,8 @@ echo  "-----> User library installation complete."
 
 # Add analogy_config to root path
 cp -f /usr/xenomai/sbin/analogy_config /usr/sbin/
-
-# Setting up user permissions
-echo  "-----> Setting up user/group."
-if grep -q xenomai /etc/group; then
-    echo "xenomai group already exists"
-else
-    groupadd xenomai
-fi
-usermod -a -G xenomai "$SUDO_USER"
-echo  "-----> Group setup complete."
+chmod -R xenomai /dev/rtdm/
+chmod -R g+rw /dev/rtdm/
 
 # Restart
 echo  "-----> Kernel patch complete."
