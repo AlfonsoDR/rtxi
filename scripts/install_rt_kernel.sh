@@ -124,7 +124,7 @@ update-initramfs -ck all
 sed -i '7,8 s/^/#/' /etc/default/grub
 sed -i -e 's/quiet//g' /etc/default/grub
 sed -i -e 's/splash//g' /etc/default/grub
-sed -i -e 's/(^GRUB_CMD_LINUX_DEFAULT="*)("$)/\1 xenomai\.allowed_group=${xenomai_gid} \2/'
+sed -i -re 's/(^GRUB_CMDLINE_LINUX_DEFAULT="*)("$)/\1 xenomai\.allowed_group='"${xenomai_gid}"' \2/' /etc/default/grub
 update-grub
 echo  "-----> Boot loader update complete."
 
