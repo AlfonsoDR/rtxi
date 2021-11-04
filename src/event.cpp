@@ -20,6 +20,7 @@
 #include <debug.h>
 #include <event.h>
 #include <string.h>
+#include <list>
 
 const char *Event::RT_PERIOD_EVENT = "SYSTEM : period";
 const char *Event::RT_PREPERIOD_EVENT = "SYSTEM : pre period";
@@ -117,8 +118,8 @@ void Event::Manager::postEvent(const Object *event)
 
 void Event::Manager::postEventRT(const Object *event)
 {
-    for (RT::List<RTHandler>::iterator i = rthandlerList.begin(),end = rthandlerList.end(); i != end; ++i)
-        i->receiveEventRT(event);
+    for (std::list<RTHandler *>::iterator i = rthandlerList.begin(),end = rthandlerList.end(); i != end; ++i)
+        (*i)->receiveEventRT(event);
 }
 
 void Event::Manager::registerHandler(Handler *handler)
@@ -135,12 +136,12 @@ void Event::Manager::unregisterHandler(Handler *handler)
 
 void Event::Manager::registerRTHandler(RTHandler *handler)
 {
-    rthandlerList.insert(rthandlerList.end(),*handler);
+    rthandlerList.insert(rthandlerList.end(),handler);
 }
 
 void Event::Manager::unregisterRTHandler(RTHandler *handler)
 {
-    rthandlerList.remove(*handler);
+    rthandlerList.remove(handler);
 }
 
 static Mutex mutex;

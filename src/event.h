@@ -223,7 +223,7 @@ private:
 
     Mutex mutex;
     std::list<Handler *> handlerList;
-    RT::List<RTHandler> rthandlerList;
+    std::list<RTHandler *> rthandlerList;
 
 }; // class Manager
 
@@ -258,7 +258,7 @@ public:
  *
  * \sa Event::Manager::postEventRT()
  */
-class RTHandler : public RT::List<RTHandler>::Node
+class RTHandler 
 {
 
 public:

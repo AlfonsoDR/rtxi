@@ -98,29 +98,29 @@ struct SetFileNameEditEventData
 class InsertChannelEvent: public RT::Event
 {
 public:
-    InsertChannelEvent(bool &, RT::List<DataRecorder::Channel> &,
-                       RT::List<DataRecorder::Channel>::iterator, DataRecorder::Channel &);
+    InsertChannelEvent(bool &, std::list<DataRecorder::Channel> &,
+                       std::list<DataRecorder::Channel>::iterator, DataRecorder::Channel &);
     ~InsertChannelEvent(void);
     int callback(void);
 
 private:
     bool &recording;
-    RT::List<DataRecorder::Channel> &channels;
-    RT::List<DataRecorder::Channel>::iterator end;
+    std::list<DataRecorder::Channel> &channels;
+    std::list<DataRecorder::Channel>::iterator end;
     DataRecorder::Channel &channel;
 }; // class InsertChannelEvent
 
 class RemoveChannelEvent: public RT::Event
 {
 public:
-    RemoveChannelEvent(bool &, RT::List<DataRecorder::Channel> &,
+    RemoveChannelEvent(bool &, std::list<DataRecorder::Channel> &,
                        DataRecorder::Channel &);
     ~RemoveChannelEvent(void);
     int callback(void);
 
 private:
     bool &recording;
-    RT::List<DataRecorder::Channel> &channels;
+    std::list<DataRecorder::Channel> &channels;
     DataRecorder::Channel &channel;
 }; // class RemoveChannelEvent
 
@@ -185,8 +185,8 @@ private:
 }; // class DoneEvent
 }; // namespace
 
-InsertChannelEvent::InsertChannelEvent(bool &r, RT::List<DataRecorder::Channel> & l,
-                                       RT::List<DataRecorder::Channel>::iterator e, DataRecorder::Channel &c) :
+InsertChannelEvent::InsertChannelEvent(bool &r, std::list<DataRecorder::Channel *> & l,
+                                       std::list<DataRecorder::Channel>::iterator e, DataRecorder::Channel &c) :
     recording(r), channels(l), end(e), channel(c)
 {
 }
@@ -199,11 +199,11 @@ int InsertChannelEvent::callback(void)
 {
     if(recording)
         return -1;
-    channels.insertRT(end, channel);
+    channels.insert(end, channel);
     return 0;
 }
 
-RemoveChannelEvent::RemoveChannelEvent(bool &r,	RT::List<DataRecorder::Channel> & l,
+RemoveChannelEvent::RemoveChannelEvent(bool &r,	std::list<DataRecorder::Channel> & l,
                                        DataRecorder::Channel &c) :
     recording(r), channels(l), channel(c)
 {
@@ -217,7 +217,7 @@ int RemoveChannelEvent::callback(void)
 {
     if (recording)
         return -1;
-    channels.removeRT(channel);
+    channels.remove(&channel);
     return 0;
 }
 
@@ -606,7 +606,7 @@ DataRecorder::Panel::~Panel(void)
     DoneEvent RTevent(fifo);
     while (RT::System::getInstance()->postEvent(&RTevent));
     pthread_join(thread, 0);
-    for (RT::List<Channel>::iterator i = channels.begin(), end = channels.end(); i!= end;)
+    for (std::list<Channel>::iterator i = channels.begin(), end = channels.end(); i!= end;)
         delete &*(i++);
 }
 
@@ -621,7 +621,7 @@ void DataRecorder::Panel::execute(void)
             size_t n = 0;
             token.type = SYNC;
             token.size = channels.size() * sizeof(double);
-            for (RT::List<Channel>::iterator i = channels.begin(), end = channels.end(); i != end; ++i)
+            for (std::list<Channel>::iterator i = channels.begin(), end = channels.end(); i != end; ++i)
                 if (i->block)
                     data[n++] = i->block->getValue(i->type, i->index);
 
@@ -652,7 +652,7 @@ void DataRecorder::Panel::receiveEvent(const Event::Object *event)
                 blockList->removeItem(n);
             blockPtrList.erase(blockPtrList.begin() + n);
 
-            for (RT::List<Channel>::iterator i = channels.begin(), end = channels.end(); i != end; ++i)
+            for (std::list<Channel>::iterator i = channels.begin(), end = channels.end(); i != end; ++i)
                 if (i->block == block) {
                     if (recording) i->block = 0;
                     RemoveChannelEvent RTevent(recording, channels, *i);
@@ -900,7 +900,7 @@ void DataRecorder::Panel::removeChannel(void)
     if(!selectionBox->count() || selectionBox->selectedItems().isEmpty())
         return;
 
-    for (RT::List<Channel>::iterator i = channels.begin(), end = channels.end(); i != end; ++i)
+    for (std::list<Channel>::iterator i = channels.begin(), end = channels.end(); i != end; ++i)
         if (i->name == selectionBox->selectedItems().first()->text())
             {
                 RemoveChannelEvent RTevent(recording, channels, *i);
@@ -1065,14 +1065,14 @@ void DataRecorder::Panel::doSave(Settings::Object::State &s) const
     s.saveInteger("Downsample", downsampleSpin->value());
     s.saveInteger("Num Channels", channels.size());
     size_t n = 0;
-    for (RT::List<Channel>::const_iterator i = channels.begin(), end = channels.end(); i != end; ++i)
+    for (std::list<Channel *>::const_iterator i = channels.begin(), end = channels.end(); i != end; ++i)
         {
             std::ostringstream str;
             str << n++;
 
-            s.saveInteger(str.str() + " ID", i->block->getID());
-            s.saveInteger(str.str() + " type", i->type);
-            s.saveInteger(str.str() + " index", i->index);
+            s.saveInteger(str.str() + " ID", (*i)->block->getID());
+            s.saveInteger(str.str() + " type", (*i)->type);
+            s.saveInteger(str.str() + " index", (*i)->index);
         }
 }
 
@@ -1447,9 +1447,9 @@ int DataRecorder::Panel::startRecording(long long timestamp)
     H5Tinsert(param_type, "index", HOFFSET(param_hdf_t,index), H5T_STD_I64LE);
     H5Tinsert(param_type, "value", HOFFSET(param_hdf_t,value), H5T_IEEE_F64LE);
 
-    for (RT::List<Channel>::iterator i = channels.begin(), end = channels.end(); i != end; ++i)
+    for (std::list<Channel *>::iterator i = channels.begin(), end = channels.end(); i != end; ++i)
         {
-            IO::Block *block = i->block;
+            IO::Block *block = (*i)->block;
             for (size_t j = 0; j < block->getCount(Workspace::PARAMETER); ++j)
                 {
                     QString parameter_name = QString::number(block->getID()) + " "
@@ -1474,9 +1474,9 @@ int DataRecorder::Panel::startRecording(long long timestamp)
     H5Tclose(param_type);
 
     size_t count = 0;
-    for (RT::List<Channel>::iterator i = channels.begin(), end = channels.end(); i != end; ++i)
+    for (std::list<Channel *>::iterator i = channels.begin(), end = channels.end(); i != end; ++i)
         {
-            std::string rec_chan_name = std::to_string(++count) + " " + i->name.toStdString();
+            std::string rec_chan_name = std::to_string(++count) + " " + (*i)->name.toStdString();
             rec_chan_name.erase(std::remove_if(rec_chan_name.begin(), rec_chan_name.end(), &ispunct), rec_chan_name.end());
             hid_t data = H5Dcreate(file.sdata, rec_chan_name.c_str(), string_type, scalar_space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             H5Dwrite(data, string_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, rec_chan_name.c_str());

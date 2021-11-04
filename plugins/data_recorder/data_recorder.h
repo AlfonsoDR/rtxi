@@ -28,6 +28,7 @@
 #include <vector>
 #include <time.h>
 #include <daq.h>
+#include <list>
 
 #include <hdf5.h>
 #include <hdf5_hl.h>
@@ -78,7 +79,7 @@ private:
     void *data;
 };
 
-class Channel : public RT::List<Channel>::Node
+class Channel
 {
 
     friend class Panel;
@@ -189,7 +190,7 @@ private:
     QPushButton *stopRecordButton;
     QPushButton *closeButton;
 
-    RT::List<Channel> channels;
+    std::list<Channel *> channels;
     std::vector<IO::Block *> blockPtrList;
 }; // class Panel
 
